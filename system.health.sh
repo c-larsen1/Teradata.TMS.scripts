@@ -48,7 +48,7 @@
 SYSTEMNAME=$(cat /etc/HOSTNAME)
 #LOGFILE=/home/support/system.health.scripts/export/$SYSTEMNAME.system.health.report.$(date +'%b%d-%Y.%H%M').log
 LOGFILE=$(cat system.health.cfg | grep LOGFOLDER | cut -d'=' -f2)/$SYSTEMNAME.system.health.report.log
-CHKALLLOG=/home/support/system.health.scripts/export/$SYSTEMNAME.chk_all.$(date +'%b%d-%Y.%H%M').log
+#CHKALLLOG=/home/support/system.health.scripts/export/$SYSTEMNAME.chk_all.$(date +'%b%d-%Y.%H%M').log
 VCONFIG=/etc/opt/teradata/tdconfig/vconfig.txt
 
 echo ""
