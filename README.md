@@ -5,14 +5,16 @@ To copy to your local system.
 
 1) cd ~
 
-2) git remote add origin https://github.com/c-larsen1/Teradata.TMS.scripts.git
+2) git clone https://github.com/c-larsen1/Teradata.TMS.scripts.git
 
 3) cd Teradata.TMS.scripts
 
-4) copy both files to a folder on your nodes - I use - /home/support/system.health.scripts/
+4) Copy both files to a folder on your nodes - I use - /home/support/system.health.scripts/
 
    - system.health.cfg
    - system.health.sh
+   
+5) Edit - system.health.cfg - file as needed.
    
 Remember to give script execute wrights.
 
