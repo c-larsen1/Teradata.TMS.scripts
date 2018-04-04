@@ -3,13 +3,13 @@ It is still a work in progress...
 
 To copy to your local system.
 
-cd ~
+1) cd ~
 
-git remote add origin https://github.com/c-larsen1/Teradata.TMS.scripts.git
+2) git remote add origin https://github.com/c-larsen1/Teradata.TMS.scripts.git
 
-cd Teradata.TMS.scripts
+3) cd Teradata.TMS.scripts
 
-copy both files to a folder on your nodes - I use - /home/support/system.health.scripts/
+4) copy both files to a folder on your nodes - I use - /home/support/system.health.scripts/
 
    - system.health.cfg
    - system.health.sh
