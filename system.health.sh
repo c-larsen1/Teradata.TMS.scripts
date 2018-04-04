@@ -212,8 +212,9 @@ cat /home/support/system.health.scripts/export/node.check >> $LOGFILE
 rm /home/support/system.health.scripts/export/node.check.cpio.gz
 rm /home/support/system.health.scripts/export/node.check
 
-scp $LOGFILE root@10.144.179.102:/home/support/system.health.scripts/import/
+#scp to remote server
+#scp $LOGFILE root@10.144.179.102:/home/support/system.health.scripts/import/
 
-##Cleanup
-rm $LOGFILE
+##Cleanup - uncomment it you want to delete LogFile
+#rm $LOGFILE
 
