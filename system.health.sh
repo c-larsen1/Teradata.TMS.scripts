@@ -128,36 +128,11 @@ cat /tmp/shs.trace.log >> $LOGFILE
 rm /tmp/shs.trace.log
 echo "" >> $LOGFILE
 
-echo "DNS Test:" >> $LOGFILE
-/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "ping -c1 google.com | grep PING" > /tmp/dns.test.log
-cat /tmp/dns.test.log >> $LOGFILE
-rm /tmp/dns.test.log
-echo "" >> $LOGFILE
-
-echo "Active Directory Logon Test:" >> $LOGFILE
-/opt/teradata/tdat/tdgss/$(rpm -qa | grep tdgss | sort | tail -1 | cut -d'-' -f2)/bin/tdsbind -u SA23360003 -w $(cat /etc/lp.dat) >> $LOGFILE
-echo "" >> $LOGFILE
-
-echo "Kerberos Key List:" >> $LOGFILE
-/usr/lib/mit/bin/klist -ke /etc/teradata.keytab | grep -i cop > /tmp/krlist.out.txt
-cat /tmp/krlist.out.txt >> $LOGFILE
-echo "" >> $LOGFILE
-
-echo "Kerberos Authentication Test:" >> $LOGFILE
-#for i in $(/usr/lib/mit/bin/klist -ke /etc/teradata.keytab | grep -i cop | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2 | cut -d'@' -f1) ; do /usr/lib/mit/bin/kvno $i ; done >> $LOGFILE
-/usr/bin/printf $(cat /etc/lp.dat) | /usr/lib/mit/bin/kinit SA23360003
-sleep 2
-for i in $(cat /tmp/krlist.out.txt | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2 | cut -d'@' -f1) ; do /usr/lib/mit/bin/kvno $i ; done > /tmp/krlist.out.2.txt
-cat /tmp/krlist.out.2.txt >> $LOGFILE
-echo "" >> $LOGFILE
-
-echo "GetHost output for Kerberos:" >> $LOGFILE
-for i in $(cat /tmp/krlist.out.2.txt | cut -d' ' -f1 | cut -d'/' -f2 |  cut -d'@' -f1)
- do /opt/teradata/client/15.10/bin/gethost -c $i
-#done | egrep 'SMP00|Teradata Host Servers|cop|SPN|TERADATA' > /tmp/krlist.out.3.txt
-done | egrep 'SMP0|cop|TERADATA' > /tmp/krlist.out.3.txt
-cat /tmp/krlist.out.3.txt >> $LOGFILE
-echo "" >> $LOGFILE
+#echo "DNS Test:" >> $LOGFILE
+#/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "ping -c1 google.com | grep PING" > /tmp/dns.test.log
+#cat /tmp/dns.test.log >> $LOGFILE
+#rm /tmp/dns.test.log
+#echo "" >> $LOGFILE
 
 echo "Array - DAMC list:" >> $LOGFILE
 #/usr/bin/SMcli -d | grep DAMC | cut -d' ' -f1 > /tmp/DAMC.list.txt
