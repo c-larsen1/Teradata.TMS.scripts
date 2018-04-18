@@ -1,5 +1,6 @@
 #!/bin/bash
 ## Created by c-larsen1 for automatic system health reporting...
+## https://github.com/c-larsen1
 ## Please do not run script if you're not sure...
 
 # Version = 00.00.00.01
@@ -28,14 +29,14 @@
 #
 # Version = 01.00.00.07a
 # 2018-01-31 c-larsen1 - Fix DAMC health output...
-#                           - Issues needs fix - No proper Array Drive fault detection
-#                                              - No proper Array Controller fault detection
-#                                              - No DOT HILL support
+#                      - Issues needs fix - No proper Array Drive fault detection
+#                                         - No proper Array Controller fault detection
+#                                         - No DOT HILL support
 #
 # Version = 01.00.00.08
 # 2018-02-16 c-larsen1 - Added Kerberos - Keyfile
-#                                            - Gethost
-#                                            - KVNO
+#                                       - Gethost
+#                                       - KVNO
 #
 # Version = 01.00.00.08a
 # 2018-02-23 c-larsen1 - Fixed some scripting problems
@@ -43,22 +44,32 @@
 # Version = 01.00.00.08b
 # 2018-03-22 c-larsen1 - Added internal node disks status
 #
+# Version = 01.00.00.09
+# 2018-03-22 c-larsen1 - Fixed presentation
+#
 ##########################################################################################################
 
 SYSTEMNAME=$(cat /etc/HOSTNAME)
 #LOGFILE=/home/support/system.health.scripts/export/$SYSTEMNAME.system.health.report.$(date +'%b%d-%Y.%H%M').log
-LOGFILE=$(cat system.health.cfg | grep LOGFOLDER | cut -d'=' -f2)/$SYSTEMNAME.system.health.report.log
-#CHKALLLOG=/home/support/system.health.scripts/export/$SYSTEMNAME.chk_all.$(date +'%b%d-%Y.%H%M').log
+LOGFILE=$(cat /etc/system.health.cfg | grep LOGFOLDER | cut -d'=' -f2)/$SYSTEMNAME.system.health.report.log
+CHKALLLOG=/home/support/system.health.scripts/export/$SYSTEMNAME.chk_all.$(date +'%b%d-%Y.%H%M').log
 VCONFIG=/etc/opt/teradata/tdconfig/vconfig.txt
+SCPUSER=$(cat /etc/system.health.cfg | grep USER | cut -d'=' -f2)
+SERVERREMOTE=$(cat /etc/system.health.cfg | grep REMOTESCPSERVER | cut -d'=' -f2)
+SERVERREMOTEFOLDER=$(cat /etc/system.health.cfg | grep REMOTESERVERFOLDER | cut -d'=' -f2)
+USERAD=$(cat /etc/system.health.cfg | grep ADUSELDAPR | cut -d'=' -f2 | cut -d' ' -f1 | tr -d '\n')
+URLDNS=$(cat /etc/system.health.cfg | grep DNSURL | cut -d'=' -f2 | tr -d '\n')
+COMMAND1=$(if [[ "$(cat /etc/system.health.cfg | grep ENABLESCP | cut -d'=' -f2)" == 'yes' ]] ; then echo "scp $LOGFILE $SCPUSER@$SERVERREMOTE:$SERVERREMOTEFOLDER" ; else echo "" ; fi)
+COMMAND2=$(if [[ "$(cat /etc/system.health.cfg | grep ENABLESCP | cut -d'=' -f2)" == 'yes' ]] ; then echo "rm $LOGFILE" ; else echo "echo Document is availible in at $LOGFILE" ; fi)
 
 echo ""
 echo ""
 echo "Automatic system health reporting..."
 echo "Please do not run script if you're not sure..."
-echo "Version = 01.00.00.08b"
+echo "Version = 01.00.00.09"
 
 echo $(date) "System Health Report for - $SYSTEMNAME:" > $LOGFILE
-echo "Version = 01.00.00.08b" >> $LOGFILE
+echo "Version = 01.00.00.09" >> $LOGFILE
 echo "" >> $LOGFILE
 
 echo "System info:" >> $LOGFILE
@@ -128,11 +139,46 @@ cat /tmp/shs.trace.log >> $LOGFILE
 rm /tmp/shs.trace.log
 echo "" >> $LOGFILE
 
-#echo "DNS Test:" >> $LOGFILE
-#/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "ping -c1 google.com | grep PING" > /tmp/dns.test.log
-#cat /tmp/dns.test.log >> $LOGFILE
-#rm /tmp/dns.test.log
-#echo "" >> $LOGFILE
+echo "DNS Test:" >> $LOGFILE
+/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "ping -c1 $URLDNS | grep PING" > /tmp/dns.test.log
+cat /tmp/dns.test.log >> $LOGFILE
+rm /tmp/dns.test.log
+echo "" >> $LOGFILE
+
+echo "Active Directory Logon Test:" >> $LOGFILE
+/opt/teradata/tdat/tdgss/$(rpm -qa | grep tdgss | sort | tail -1 | cut -d'-' -f2)/bin/tdsbind -u $USERAD -w $(cat /etc/lp.dat) >> $LOGFILE
+echo "" >> $LOGFILE
+
+echo "Kerberos Key List:" >> $LOGFILE
+/usr/lib/mit/bin/klist -ke /etc/teradata.keytab | grep -i cop > /tmp/krlist.out.txt
+cat /tmp/krlist.out.txt >> $LOGFILE
+echo "" >> $LOGFILE
+
+echo "Kerberos Authentication Test:" >> $LOGFILE
+#for i in $(/usr/lib/mit/bin/klist -ke /etc/teradata.keytab | grep -i cop | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2 | cut -d'@' -f1) ; do /usr/lib/mit/bin/kvno $i ; done >> $LOGFILE
+/usr/bin/printf $(cat /etc/lp.dat) | /usr/lib/mit/bin/kinit $USERAD
+sleep 2
+for i in $(cat /tmp/krlist.out.txt | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2 | cut -d'@' -f1) ; do /usr/lib/mit/bin/kvno $i ; done > /tmp/krlist.out.2.txt
+cat /tmp/krlist.out.2.txt >> $LOGFILE
+echo "" >> $LOGFILE
+
+echo "GetHost output for Kerberos:" >> $LOGFILE
+for i in $(cat /tmp/krlist.out.2.txt | cut -d' ' -f1 | cut -d'/' -f2 |  cut -d'@' -f1)
+ do /opt/teradata/client/15.10/bin/gethost -c $i
+#done | egrep 'SMP00|Teradata Host Servers|cop|SPN|TERADATA' > /tmp/krlist.out.3.txt
+done | egrep 'SMP0|cop|TERADATA' > /tmp/krlist.out.3.txt
+cat /tmp/krlist.out.3.txt >> $LOGFILE
+echo "" >> $LOGFILE
+
+echo "Internal Disk status:" >> $LOGFILE
+if [[ "$(/opt/teradata/gsctools/bin/machinetype | grep NodeVendor | cut -d' ' -f5 | cut -d'=' -f2)" == 'DELL' ]]
+ then /opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "/opt/dell/srvadmin/bin/omreport storage pdisk controller=0 | egrep 'ID|Status|State' | grep -v ' Status' | grep -v 'RAID' | grep -v ' ID'" /tmp/node.drives.txt
+ else /opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "/opt/MegaRAID/CmdTool2/CmdTool2 -LDPDInfo -a0 | egrep 'State |Virtual Drive'" > /tmp/node.drives.txt
+fi
+cat /tmp/node.drives.txt >> $LOGFILE
+rm /tmp/node.drives.txt
+echo "" >> $LOGFILE
+/opt/MegaRAID/CmdTool2/CmdTool2 -LDPDInfo -a0 | egrep 'State |Virtual Drive'
 
 echo "Array - DAMC list:" >> $LOGFILE
 #/usr/bin/SMcli -d | grep DAMC | cut -d' ' -f1 > /tmp/DAMC.list.txt
@@ -140,56 +186,22 @@ echo "Array - DAMC list:" >> $LOGFILE
 cat /tmp/DAMC.list.txt >> $LOGFILE
 echo "" >> $LOGFILE
 
-echo "Internal Disk status:" >> $LOGFILE
-/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "/opt/dell/srvadmin/bin/omreport storage pdisk controller=0 | egrep 'ID|Status|State' | grep -v ' Status' | grep -v 'RAID' | grep -v ' ID'" > /tmp/node.drives.txt
-cat /tmp/node.drives.txt >> $LOGFILE
-rm /tmp/node.drives.txt
-echo "" >> $LOGFILE
-
 echo "Array - Health:" >> $LOGFILE
-/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "/usr/bin/SMcli -d -v" > /tmp/SM.output.health.txt
+/opt/teradata/tdat/pde/$(/usr/pde/bin/pdepath -i | grep PDE: | cut -d' ' -f2)/bin/psh "/usr/bin/SMcli -d -v" | sed '/SMcli completed successfully/d' | sed '/^$/d' > /tmp/SM.output.health.txt
 cat /tmp/SM.output.health.txt >> $LOGFILE
-cat /tmp/SM.output.health.txt | sed '/SMcli completed successfully/d' | sed '/^$/d' | awk '!/byn0/' | grep 'Needs Attention' | cut -d' ' -f1 > /tmp/faulty.array.list.txt
-while read in ; do SMcli -n "$in" -c 'show storageArray healthStatus;' ; done < /tmp/faulty.array.list.txt >> $LOGFILE
+cat /tmp/SM.output.health.txt | awk '!/byn0/' | grep 'Needs Attention' | cut -d' ' -f1 > /tmp/faulty.array.list.txt
+if [[ -s /tmp/faulty.array.list.txt ]]
+ then echo -e "\n*****There are Faults in the Arrays*****\n       Fauilty Array list...\n$(cat /tmp/faulty.array.list.txt)\n"
+ else echo -e "\nAll Array are Healthy...\n"
+fi >> $LOGFILE
+while read in
+ do SMcli -n "$in" -c 'show storageArray healthStatus;'
+ done < /tmp/faulty.array.list.txt | sed '/Performing syntax check.../d' | sed '/Syntax check complete./d' | sed '/Executing script.../d' | sed '/Script execution complete./d' | sed '/SMcli completed successfully./d' | sed '/The controller clocks/d' | sed '/Controller/d' | sed '/Storage Management Station/d' | sed '/^$/d' >> $LOGFILE
 rm /tmp/faulty.array.list.txt
 
-#cat /tmp/DAMC.list.txt | while read ARDAMLIST
-# do
-#  echo $ARDAMLIST >> $LOGFILE
-#  /opt/teradata/osutils/bin/sallsh "SMcli -n $ARDAMLIST -c 'show storageArray healthStatus;'" > /tmp/DAMC.output.per.array.txt
-#  cat /tmp/DAMC.output.per.array.txt | grep "Executing script..." -A100 > /tmp/DAMC.output.per.array.ext.txt
-#  sed -i '/^$/d' /tmp/DAMC.output.per.array.ext.txt
-#  grep -v "Script execution complete." /tmp/DAMC.output.per.array.ext.txt > /tmp/DAMC.output.per.array.ext1.txt
-#  grep -v "SMcli completed successfully." /tmp/DAMC.output.per.array.ext1.txt > /tmp/DAMC.output.per.array.ext2.txt
-#  grep -v "Executing script..." /tmp/DAMC.output.per.array.ext2.txt > /tmp/DAMC.output.per.array.ext3.txt
-#  cat /tmp/DAMC.output.per.array.ext3.txt >> $LOGFILE
-#  rm /tmp/DAMC.output.per.*.txt
-#  sleep 1
-# done
-#rm /tmp/DAMC.list.txt
 echo "" >> $LOGFILE
 
-##Running chk_all and extracting
-echo "Errors from chk_all script:" >>$LOGFILE
-/opt/teradata/gsctools/bin/chk_all
-cp /var/opt/teradata/gsctools/chk_all/chk_all.txt /tmp/shs.chk_all.txt.full
-cat /tmp/shs.chk_all.txt.full | grep "TEST SUMMARY:" -A50 > /tmp/shs.greped.chk_all.txt
-awk '1;/====/{exit}' /tmp/shs.greped.chk_all.txt >> $LOGFILE
-rm /tmp/shs.chk_all.txt.full
-rm /tmp/shs.greped.chk_all.txt
-echo "" >> $LOGFILE
+$COMMAND1
 
-##Running node.check and extracting
-echo "Errors from node.check script:" >>$LOGFILE
-/home/support/node.check -c -f /home/support/system.health.scripts/export/node.check $(cat /tmp/bynet.list.row.txt)
-rm /tmp/bynet.list.row.txt
-cat /home/support/system.health.scripts/export/node.check >> $LOGFILE
-rm /home/support/system.health.scripts/export/node.check.cpio.gz
-rm /home/support/system.health.scripts/export/node.check
-
-#scp to remote server
-#scp $LOGFILE root@10.144.179.102:/home/support/system.health.scripts/import/
-
-##Cleanup - uncomment it you want to delete LogFile
-#rm $LOGFILE
-
+##Cleanup
+$COMMAND2
