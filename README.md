@@ -15,6 +15,6 @@ To copy to your local system.
    
 5) Edit - system.health.cfg - file as needed.
    
-Remember to give script execute wrights.
+Remember to give script execute rights.
 
 Please note - these are my scripts and not supported or approved by Teradata.
